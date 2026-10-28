@@ -1,1 +1,1 @@
-A personal YouTube downloader.
+my personal youtube video downloader
