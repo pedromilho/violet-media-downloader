@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="app-token" content="{{ token }}"><title>Youtube Downloader</title>
+  <link rel="stylesheet" href="/static/style.css"><link rel="stylesheet" href="/static/refinement.css"><script src="/static/app.js" defer></script>
+</head>
+<body>
+  <header><a class="brand" href="/" aria-label="Violet início"><span class="brand-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span> violet<span class="brand-dot">.</span></a><div class="header-actions"><span class="local"><i></i> No seu computador</span></div></header>
+  <main>
+    <h1 class="compact-title">Youtube Downloader</h1>
+    <div class="features"><span><b>01</b> Cole o link</span><i>→</i><span><b>02</b> Escolha o formato</span><i>→</i><span><b>03</b> Baixe o arquivo</span></div>
+    <p class="footnote">Baixe apenas conteúdos seus ou que você tem permissão para baixar.<br>MP3 em 320 kbps não aumenta a qualidade do áudio original.</p>
+    <form id="search-form" class="search-box">
+      <span class="link-icon" aria-hidden="true">↗</span>
+      <input id="url" type="url" required placeholder="Cole o link do YouTube aqui" aria-label="Link do vídeo do YouTube" autocomplete="off">
+      <button type="button" id="clear" aria-label="Limpar link">×</button>
+      <button class="primary" id="search" type="submit">Buscar vídeo <span>→</span></button>
+    </form>
+    <p id="error" class="error" role="alert" hidden></p>
+    <div class="download-workspace">
+    <div class="folder-actions"><button id="close-app" class="primary" type="button">Fechar</button></div>
+    <section class="converter" aria-label="Configurar download">
+      <div class="panel-heading"><span><i></i> Seu download</span><span class="tag">MP4 + MP3</span></div>
+      <div class="panel-body">
+        <div class="video-info">
+          <div class="thumbnail"><img id="thumbnail" alt="Miniatura do vídeo selecionado" hidden><div id="placeholder"><div class="play" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div><span>Prévia do vídeo</span></div><span id="duration" hidden></span></div>
+          <h2 id="video-title">Nenhum vídeo selecionado</h2><p id="channel">Cole um link acima. A busca começa automaticamente.</p>
+        </div>
+        <div class="settings">
+          <div class="field-label">ESCOLHA O FORMATO</div>
+          <div class="format-tabs" role="group" aria-label="Formato"><button type="button" data-format="mp4" class="selected" aria-pressed="true">▣ <span>Vídeo <b>MP4</b></span></button><button type="button" data-format="mp3" aria-pressed="false">♫ <span>Áudio <b>MP3</b></span></button></div>
+          <label for="quality" class="field-label quality-label">QUALIDADE</label>
+          <select id="quality"><option value="mp4">Melhor qualidade disponível</option></select>
+          <p id="format-note" class="format-note">Vídeo com áudio, pronto para assistir.</p>
+          <div class="size-preview" aria-live="polite"><span>Tamanho estimado</span><strong id="file-size">—</strong></div>
+          <p id="size-help" class="size-help">Busque um vídeo para ver a estimativa.</p>
+          <div class="destination">
+            <label class="direct-toggle"><input id="direct" type="checkbox"> Salvar direto em uma pasta</label>
+            <div class="folder-row"><span id="folder-path">Nenhuma pasta escolhida</span><button id="choose-folder" type="button">Escolher pasta</button></div>
+            <p id="folder-help">Sem selecionar, o download é salvo pelo navegador.</p>
+          </div>
+          <button id="download" class="primary download" disabled>↓ <span>Baixar MP4</span></button>
+          <div id="progress-area" aria-live="polite"><div class="progress-track"><div id="progress-bar"></div></div><p id="progress-message">Esperando...</p><a id="save-file" hidden>↓ Salvar arquivo novamente</a></div>
+          <p class="privacy">Conversão realizada neste computador.</p>
+        </div>
+      </div>
+    </section>
+    <aside class="folder-panel" aria-label="Arquivos da pasta">
+      <div class="folder-panel-heading"><h2>Arquivos da pasta</h2><button id="refresh-files" type="button" aria-label="Atualizar lista de arquivos" title="Atualizar lista">↻</button></div>
+      <p id="listed-folder">Escolha uma pasta para visualizar seus arquivos.</p>
+      <div class="folder-panel-summary"><span id="file-count">0 arquivos</span><span>Mais recentes primeiro</span></div>
+      <div class="folder-duration"><span>Tempo total das músicas</span><strong id="total-duration">0 min</strong></div>
+      <p id="duration-warning" hidden></p>
+      <p id="files-status" role="status">Escolha uma pasta no painel de download.</p>
+      <ul id="folder-files" aria-label="Lista de arquivos"></ul>
+    </aside>
+    </div>
+  </main>
+  <footer><span>violet</span><span>MP4 · MP3 128 kbps · MP3 320 kbps</span></footer>
+</body>
+</html>

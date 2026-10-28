@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+downloads/
+*.log
+settings.json
+
+# Local design snapshots and previews
+*.before-antiwebslop.*
+ui-antiwebslop.png
