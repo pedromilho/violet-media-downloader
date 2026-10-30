@@ -8,6 +8,5 @@ if not exist ".venv\Scripts\python.exe" (
 )
 ".venv\Scripts\python.exe" -c "import flask, yt_dlp, imageio_ffmpeg" >nul 2>&1
 if errorlevel 1 ".venv\Scripts\python.exe" -m pip install -r requirements.txt
-start "" "http://127.0.0.1:8765"
 ".venv\Scripts\python.exe" app.py
-exit /b
+exit

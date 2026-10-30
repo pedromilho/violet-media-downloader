@@ -6,7 +6,7 @@
   <link rel="stylesheet" href="/static/style.css"><link rel="stylesheet" href="/static/refinement.css"><script src="/static/app.js" defer></script>
 </head>
 <body>
-  <header><a class="brand" href="/" aria-label="Violet início"><span class="brand-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span> violet<span class="brand-dot">.</span></a><div class="header-actions"><span class="local"><i></i> No seu computador</span></div></header>
+  {% include '_header.html' %}
   <main>
     <h1 class="compact-title">Youtube Downloader</h1>
     <div class="features"><span><b>01</b> Cole o link</span><i>→</i><span><b>02</b> Escolha o formato</span><i>→</i><span><b>03</b> Baixe o arquivo</span></div>
@@ -14,8 +14,8 @@
     <form id="search-form" class="search-box">
       <span class="link-icon" aria-hidden="true">↗</span>
       <input id="url" type="url" required placeholder="Cole o link do YouTube aqui" aria-label="Link do vídeo do YouTube" autocomplete="off">
-      <button type="button" id="clear" aria-label="Limpar link">×</button>
-      <button class="primary" id="search" type="submit">Buscar vídeo <span>→</span></button>
+      <span id="search-status" role="status" hidden>Buscando...</span>
+      <button type="button" id="clear" aria-label="Limpar link" hidden>×</button>
     </form>
     <p id="error" class="error" role="alert" hidden></p>
     <div class="download-workspace">
@@ -31,9 +31,9 @@
           <div class="field-label">ESCOLHA O FORMATO</div>
           <div class="format-tabs" role="group" aria-label="Formato"><button type="button" data-format="mp4" class="selected" aria-pressed="true">▣ <span>Vídeo <b>MP4</b></span></button><button type="button" data-format="mp3" aria-pressed="false">♫ <span>Áudio <b>MP3</b></span></button></div>
           <label for="quality" class="field-label quality-label">QUALIDADE</label>
-          <select id="quality"><option value="mp4">Melhor qualidade disponível</option></select>
-          <p id="format-note" class="format-note">Vídeo com áudio, pronto para assistir.</p>
-          <div class="size-preview" aria-live="polite"><span>Tamanho estimado</span><strong id="file-size">—</strong></div>
+          <select id="quality" disabled><option value="mp4">Cole um link para ver as qualidades</option></select>
+          <p id="format-note" class="format-note" hidden></p>
+          <div class="size-preview" aria-live="polite"><span>TAMANHO ESTIMADO</span><strong id="file-size">—</strong></div>
           <p id="size-help" class="size-help">Busque um vídeo para ver a estimativa.</p>
           <div class="destination">
             <label class="direct-toggle"><input id="direct" type="checkbox"> Salvar direto em uma pasta</label>
@@ -42,7 +42,7 @@
           </div>
           <button id="download" class="primary download" disabled>↓ <span>Baixar MP4</span></button>
           <div id="progress-area" aria-live="polite"><div class="progress-track"><div id="progress-bar"></div></div><p id="progress-message">Esperando...</p><a id="save-file" hidden>↓ Salvar arquivo novamente</a></div>
-          <p class="privacy">Conversão realizada neste computador.</p>
+          <p class="privacy">Conversão feita localmente.</p>
         </div>
       </div>
     </section>

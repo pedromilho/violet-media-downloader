@@ -3,6 +3,7 @@ __pycache__/
 downloads/
 *.log
 settings.json
+image-settings.json
 
 # Local design snapshots and previews
 *.before-antiwebslop.*

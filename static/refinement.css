@@ -17,6 +17,10 @@ body { background: var(--color-bg); color: var(--color-fg); }
 h1.compact-title { letter-spacing: -.025em; text-wrap: balance; }
 p { text-wrap: pretty; }
 .brand { letter-spacing: -.02em; }
+.brand-navigation { display: flex; align-items: center; gap: 12px; }
+.brand-navigation .page-arrow { display: grid; place-items: center; width: 32px; height: 32px; border: 1px solid var(--color-border); border-radius: 8px; color: var(--color-muted); text-decoration: none; }
+.brand-navigation .page-arrow:hover { color: var(--color-fg); border-color: var(--color-accent); }
+header { position: relative; z-index: 1; }
 .brand-dot { display: none; }
 .brand-icon { background: var(--color-raised); color: var(--color-accent); border: 1px solid var(--color-border); box-shadow: none; }
 .local { border: 0; border-radius: 0; color: var(--color-muted); font-size: 12px; }
@@ -30,6 +34,7 @@ p { text-wrap: pretty; }
 .link-icon { color: var(--color-muted); }
 #url { color: var(--color-fg); font-size: 14px; }
 #url::placeholder { color: var(--color-muted); }
+#search-status { color: var(--color-muted); font-size: 14px; font-weight: 400; white-space: nowrap; }
 #clear { color: var(--color-muted); }
 .primary, .folder-actions #close-app, .folder-actions #close-app:hover:not(:disabled) {
   background: var(--action-fill);
@@ -56,6 +61,7 @@ select { background: var(--color-bg); color: var(--color-fg); border-color: var(
 option { background: var(--color-surface); }
 .format-note, .size-help, #folder-help { color: var(--color-muted); font-size: 11px; line-height: 1.5; }
 .size-preview { border-color: var(--color-border); color: var(--color-muted); font-size: 12px; }
+.size-preview > span { font-weight: 600; }
 .size-preview strong { color: var(--color-fg); font-size: 16px; }
 .destination { background: var(--color-bg); border-color: var(--color-border); border-radius: 8px; }
 .direct-toggle { color: var(--color-fg); font-size: 12px; }
@@ -88,6 +94,7 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
   .search-box { height: 61px; }
   .features { font-size: 11px; gap: 8px; }
   #url { font-size: 13px; }
+  #search-status { font-size: 13px; }
 }
 @media(prefers-reduced-motion:reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; }
@@ -100,9 +107,6 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 /* Center both columns as one workspace, sharing the footer's outer edges. */
 @media(min-width:1000px) {
   main { max-width: 1202px; width: 100%; }
-  main > .compact-title,
-  main > .features,
-  main > .footnote,
   main > .search-box,
   main > .error,
   main > .download-workspace { width: calc(100% - 322px); }

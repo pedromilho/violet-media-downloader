@@ -17,7 +17,8 @@ function updateSize() {
     label = '≈ ' + (bytes / divisor).toLocaleString('pt-BR', {maximumFractionDigits: 1}) + ' ' + unit;
   }
   $('file-size').textContent = label;
-  $('size-help').textContent = !video ? 'Busque um vídeo para ver a estimativa.' : label === '—' ? 'Tamanho não informado para este formato.' : 'O tamanho final pode variar um pouco após a conversão.';
+  $('size-help').textContent = !video ? 'Busque um vídeo para ver a estimativa.' : label === '—' ? 'Tamanho não informado para este formato.' : '';
+  $('size-help').hidden = !$('size-help').textContent;
 }
 $('quality').addEventListener('change', updateSize);
 let selectedFolder = '';
@@ -76,11 +77,6 @@ $('close-app').onclick = async () => {
     await api('/api/shutdown', {});
     clearInterval(folderRefreshTimer); clearTimeout(autoSearchTimer);
     ++filesRequest;
-    const message = document.createElement('main');
-    const title = document.createElement('h1'); title.className = 'compact-title'; title.textContent = 'App encerrado';
-    const detail = document.createElement('p'); detail.textContent = 'Você já pode fechar esta aba. Para abrir novamente, execute Iniciar.bat.';
-    message.append(title, detail); document.body.replaceChildren(message);
-    window.close();
   } catch (exc) { error(exc.message); setBusy(false); }
 };
 api('/api/folder').then(data => { showFolder(data.folder); $('direct').checked = Boolean(data.folder); }).catch(exc => error(exc.message));
@@ -94,7 +90,16 @@ $('choose-folder').onclick = async () => {
   } catch (exc) { error(exc.message); }
   finally { setBusy(false); $('folder-help').textContent = 'A pasta fica salva para os próximos downloads.'; }
 };
-function resetVideo() { video = null; updateSize(); $('download').disabled = true; $('thumbnail').hidden = true; $('placeholder').hidden = false; $('duration').hidden = true; $('video-title').textContent = 'Nenhum vídeo selecionado'; $('channel').textContent = 'Cole um link acima. A busca começa automaticamente.'; }
+function updateQualities() {
+  const choices = format === 'mp4'
+    ? [new Option(video ? 'Melhor qualidade disponível' : 'Cole um link para ver as qualidades', 'mp4'), ...(video?.qualities || []).map(quality => new Option(quality.label, quality.value))]
+    : [new Option('128 kbps · arquivo menor', 'mp3-128'), new Option('320 kbps · maior bitrate', 'mp3-320')];
+  $('quality').replaceChildren(...choices);
+  $('quality').disabled = busy || (format === 'mp4' && !video);
+  updateSize();
+}
+updateQualities();
+function resetVideo() { video = null; updateQualities(); $('download').disabled = true; $('thumbnail').hidden = true; $('placeholder').hidden = false; $('duration').hidden = true; $('video-title').textContent = 'Nenhum vídeo selecionado'; $('channel').textContent = 'Cole um link acima. A busca começa automaticamente.'; }
 let autoSearchTimer;
 function isVideoLink(value) {
   try {
@@ -109,8 +114,11 @@ function isVideoLink(value) {
     return /^[A-Za-z0-9_-]{11}$/.test(id);
   } catch { return false; }
 }
-$('clear').onclick = () => { clearTimeout(autoSearchTimer); $('url').value = ''; resetVideo(); error(''); $('url').focus(); };
+function updateClearButton() { $('clear').hidden = !$('url').value.trim(); }
+updateClearButton();
+$('clear').onclick = () => { clearTimeout(autoSearchTimer); $('url').value = ''; updateClearButton(); resetVideo(); error(''); $('url').focus(); };
 $('url').addEventListener('input', () => {
+  updateClearButton();
   clearTimeout(autoSearchTimer);
   resetVideo(); error('');
   if (!isVideoLink($('url').value)) return;
@@ -121,29 +129,30 @@ $('url').addEventListener('input', () => {
     }
   }, 650);
 });
-function setBusy(value) { busy = value; for (const el of document.querySelectorAll('button,input,select')) el.disabled = value; $('download').disabled = value || !video; }
+function setBusy(value) { busy = value; for (const el of document.querySelectorAll('button,input,select')) el.disabled = value; $('download').disabled = value || !video; $('quality').disabled = value || (format === 'mp4' && !video); }
 $('search-form').onsubmit = async event => {
   clearTimeout(autoSearchTimer);
   event.preventDefault(); if (busy) return;
-  error(''); resetVideo(); setBusy(true); $('search').textContent = 'Buscando…';
+  error(''); resetVideo(); setBusy(true); $('search-status').hidden = false; $('search-form').setAttribute('aria-busy', 'true');
   $('progress-bar').style.width = '0%'; $('progress-message').textContent = 'Esperando...'; $('save-file').hidden = true;
   try {
     video = await api('/api/info', {url:$('url').value});
-    updateSize();
+    updateQualities();
     $('video-title').textContent = video.title; $('channel').textContent = video.channel;
     if (video.thumbnail) { $('thumbnail').src = video.thumbnail; $('thumbnail').hidden = false; $('placeholder').hidden = true; }
     const seconds = Math.floor(video.duration || 0);
     $('duration').textContent = seconds >= 3600 ? `${Math.floor(seconds/3600)}:${String(Math.floor(seconds/60)%60).padStart(2,'0')}:${String(seconds%60).padStart(2,'0')}` : `${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`;
     $('duration').hidden = false;
   } catch (exc) { error(exc.message); }
-  finally { setBusy(false); $('search').innerHTML = 'Buscar vídeo <span>→</span>'; }
+  finally { setBusy(false); $('search-status').hidden = true; $('search-form').removeAttribute('aria-busy'); }
 };
 $('thumbnail').onerror = () => { $('thumbnail').hidden = true; $('placeholder').hidden = false; };
 document.querySelectorAll('[data-format]').forEach(button => button.onclick = () => {
   format = button.dataset.format;
   document.querySelectorAll('[data-format]').forEach(el => { el.classList.toggle('selected', el === button); el.setAttribute('aria-pressed', String(el === button)); });
-  $('quality').replaceChildren(...(format === 'mp4' ? [new Option('Melhor qualidade disponível', 'mp4')] : [new Option('128 kbps · arquivo menor', 'mp3-128'),new Option('320 kbps · maior bitrate', 'mp3-320')]));
-  $('format-note').textContent = format === 'mp4' ? 'Vídeo com áudio, pronto para assistir.' : 'Áudio MP3 para ouvir onde quiser.';
+  updateQualities();
+  $('format-note').textContent = format === 'mp4' ? '' : 'Áudio MP3 para ouvir onde quiser.';
+  $('format-note').hidden = format === 'mp4';
   $('download').innerHTML = `↓ <span>Baixar ${format.toUpperCase()}</span>`;
   updateSize();
 });

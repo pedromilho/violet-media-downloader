@@ -30,6 +30,20 @@ Visible keyboard focus, dark-mode contrast, permanent progress track with waitin
 The right-hand panel intentionally remains to the right on narrow viewports, accessible by horizontal scrolling, matching the user's explicit request to preserve panel positions. Do not stack or recenter panels without a subsequent layout request.
 
 ## Decision log
+2026-10-30: Replace the shutdown message page with actual desktop shutdown. The launcher owns a separate browser app window; the Close endpoint signals its lifecycle to close that window and the server, then the batch exits its terminal. Keep the existing guard against shutdown during active downloads.
+
+2026-10-30: Saving an edited image opens the native Windows folder picker. An optional default folder persists separately from video download settings; when enabled, future saves use it directly. Allow changing/removing this default. Image encoding remains in browser canvas; encoded bytes are written locally by Flask with collision-safe names. Cancelling the picker writes nothing.
+
+2026-10-30: Align the editor's desktop action row and panels with the downloader's search row and panels. Reserve the same description area, use a 69px action row, 22px separation and a 300px sidebar. Keep the existing responsive stacking on smaller screens.
+
+2026-10-30: Add a local image editor at /images, reached by an arrow beside Violet, with a return arrow to the downloader. Reuse existing fonts, surfaces and button colors. Use a preview plus a 320px tool column on desktop, stacking below 850px. Support pointer/numeric cropping, horizontal/vertical flips, quarter turns, resizing with optional aspect lock, bounded undo, original restoration, and PNG/JPG/WebP export. Image processing stays in browser canvas. The checkerboard behind transparent images indicates transparency, rather than decorative texture; JPG uses a white background. Image editor title wrapping is inherited from refinement.css.
+
+2026-10-30: Populate MP4 quality choices from the video's available MP4 resolutions after lookup, highest first. Keep automatic best quality and MP3 bitrate options. Each resolution uses an exact-height download selector and its own size estimate; clear stale choices when the link changes.
+
+2026-10-30: Search starts automatically after a valid link is entered; remove the search button. Show the clear control only for nonempty input, and show a plain muted status matching the input typography during lookup.
+
+2026-10-30: Center the main title, instructions and description across the full workspace width, including the files column. Keep the search and download controls aligned with the download column.
+
 2026-10-28: Applied Antiwebslop to legibility and hierarchy, not functionality or layout. Removed ornamental background glow and generic placeholder copy. Kept the user's gradient preference. Retained original files as before-antiwebslop snapshots for visual rollback.
 
 ## Reference

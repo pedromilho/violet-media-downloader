@@ -75,15 +75,6 @@ main > .features { margin: 0 0 10px; }
 main > .footnote { margin: 0 0 22px; }
 #progress-message { min-height: 17px; margin: 10px 0; }
 .progress-track { background: #ffffff12; }
-/* Keep the search button stable in its idle and loading states. */
-.search-box #search {
-  flex: 0 0 160px;
-  width: 160px;
-  white-space: nowrap;
-}
-@media (max-width: 620px) {
-  .search-box #search { flex-basis: 112px; width: 112px; }
-}
 .header-actions{display:flex;align-items:center;gap:12px}
 #close-app{border:1px solid #67415d;background:#b63c6e12;color:#e7b2cb;border-radius:9px;padding:9px 12px;font-size:11px;white-space:nowrap}
 #close-app:hover:not(:disabled){background:#b63c6e2b;border-color:#ad648c}

@@ -8,7 +8,7 @@ root = tk.Tk()
 root.withdraw()
 root.attributes('-topmost', True)
 try:
-    folder = filedialog.askdirectory(parent=root, title='Escolha a pasta para seus downloads',
+    folder = filedialog.askdirectory(parent=root, title=sys.argv[2] if len(sys.argv) > 2 else 'Escolha a pasta para seus downloads',
                                      initialdir=sys.argv[1] or None, mustexist=True)
     sys.stdout.buffer.write(json.dumps(folder, ensure_ascii=False).encode('utf-8'))
 finally:

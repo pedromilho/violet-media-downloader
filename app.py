@@ -9,6 +9,7 @@ import threading
 import time
 import uuid
 import math
+import io
 from functools import lru_cache
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -31,6 +32,12 @@ lock = threading.Lock()
 slots = threading.BoundedSemaphore(2)
 SETTINGS = ROOT / 'settings.json'
 picker_lock = threading.Lock()
+IMAGE_SETTINGS = ROOT / 'image-settings.json'
+image_folders = {}
+try:
+    image_default_folder = json.loads(IMAGE_SETTINGS.read_text(encoding='utf-8')).get('folder', '')
+except (OSError, ValueError, AttributeError):
+    image_default_folder = ''
 AUDIO_EXTENSIONS = {'.mp3', '.m4a', '.aac', '.wav', '.ogg', '.oga', '.opus', '.flac', '.wma', '.aiff', '.aif'}
 
 
@@ -64,7 +71,7 @@ def save_direct(source, directory, filename):
         except FileExistsError:
             continue
         try:
-            with handle, source.open('rb') as incoming:
+            with handle, (source.open('rb') if isinstance(source, Path) else source) as incoming:
                 shutil.copyfileobj(incoming, handle)
         except Exception:
             target.unlink(missing_ok=True)
@@ -105,20 +112,41 @@ def update(job_id, **values):
         jobs[job_id].update(values)
 
 
-def size_previews(data, ydl):
-    duration = data.get('duration') or 0
-    sizes = {f'mp3-{rate}': round(duration * rate * 1000 / 8) if duration > 0 else None
-             for rate in (128, 320)}
-    sizes['mp4'] = None
+def mp4_selector(fmt):
+    if fmt == 'mp4':
+        return MP4_FORMAT
+    height = int(fmt.removeprefix('mp4-'))
+    return (f'bv[ext=mp4][vcodec^=avc1][height={height}]+ba[ext=m4a]/'
+            f'b[ext=mp4][height={height}]/bv[ext=mp4][height={height}]+ba[ext=m4a]')
+
+
+def selected_streams(data, ydl, selector):
     formats = data.get('formats') or []
     if not formats:
-        return sizes
-    selected = list(ydl.build_format_selector(MP4_FORMAT)({
+        return []
+    return list(ydl.build_format_selector(selector)({
         'formats': formats,
         'has_merged_format': any('none' not in (f.get('acodec'), f.get('vcodec')) for f in formats),
         'incomplete_formats': all(f.get('vcodec') == 'none' for f in formats) or all(f.get('acodec') == 'none' for f in formats),
     }))
-    if selected:
+
+
+def video_qualities(data, ydl):
+    heights = sorted({int(f['height']) for f in data.get('formats') or []
+                      if f.get('height') and f.get('ext') == 'mp4' and f.get('vcodec') != 'none'}, reverse=True)
+    return [dict(value=f'mp4-{height}', label=f'{height}p') for height in heights
+            if selected_streams(data, ydl, mp4_selector(f'mp4-{height}'))]
+
+
+def size_previews(data, ydl, qualities=()):
+    duration = data.get('duration') or 0
+    sizes = {f'mp3-{rate}': round(duration * rate * 1000 / 8) if duration > 0 else None
+             for rate in (128, 320)}
+    for fmt in ['mp4', *(quality['value'] for quality in qualities)]:
+        sizes[fmt] = None
+        selected = selected_streams(data, ydl, mp4_selector(fmt))
+        if not selected:
+            continue
         streams = selected[0].get('requested_formats') or [selected[0]]
         total = 0
         for stream in streams:
@@ -126,9 +154,10 @@ def size_previews(data, ydl):
             if not size and duration > 0 and stream.get('tbr'):
                 size = duration * stream['tbr'] * 1000 / 8
             if not size:
-                return sizes
+                break
             total += size
-        sizes['mp4'] = round(total)
+        else:
+            sizes[fmt] = round(total)
     return sizes
 
 
@@ -146,16 +175,17 @@ def run_job(job_id, url, fmt, output_folder=''):
 
         opts = options()
         opts.update(outtmpl=str(folder / 'source.%(ext)s'), progress_hooks=[progress])
-        if fmt == 'mp4':
-            opts.update(format=MP4_FORMAT, merge_output_format='mp4')
+        is_mp4 = fmt == 'mp4' or fmt.startswith('mp4-')
+        if is_mp4:
+            opts.update(format=mp4_selector(fmt), merge_output_format='mp4')
         else:
             opts.update(format='bestaudio/best')
         with yt_dlp.YoutubeDL(opts) as ydl:
             info = ydl.extract_info(url, download=True)
-        update(job_id, status='converting', progress=93, message='Finalizando MP4…' if fmt == 'mp4' else 'Convertendo para MP3…')
-        extension = 'mp4' if fmt == 'mp4' else 'mp3'
+        update(job_id, status='converting', progress=93, message='Finalizando MP4…' if is_mp4 else 'Convertendo para MP3…')
+        extension = 'mp4' if is_mp4 else 'mp3'
         final = folder / ('pronto.' + extension)
-        if fmt == 'mp4':
+        if is_mp4:
             (folder / 'source.mp4').replace(final)
         else:
             source = next(p for p in folder.glob('source.*') if p.suffix not in ('.part', '.ytdl'))
@@ -198,6 +228,8 @@ def readable_error(exc):
 
 @app.before_request
 def local_requests_only():
+    if request.path == '/api/images/save':
+        request.max_content_length = 40000000
     if request.host not in ('127.0.0.1:8765', 'localhost:8765'):
         return jsonify(error='Host não permitido.'), 403
     if request.method == 'POST' and request.headers.get('X-App-Token') != TOKEN:
@@ -209,6 +241,92 @@ def index():
     return render_template('index.html', token=TOKEN)
 
 
+@app.get('/images')
+def image_editor():
+    return render_template('images.html', image_editor=True, token=TOKEN)
+
+
+def image_folder_choice(folder):
+    key = secrets.token_urlsafe(24)
+    with lock:
+        if len(image_folders) >= 64:
+            image_folders.pop(next(iter(image_folders)))
+        image_folders[key] = folder
+    return dict(folder=folder, key=key)
+
+
+@app.get('/api/images/folder')
+def get_image_folder():
+    with lock:
+        folder = image_default_folder
+    return jsonify(image_folder_choice(folder) if folder else dict(folder='', key=''))
+
+
+@app.post('/api/images/folder')
+def choose_image_folder():
+    if not picker_lock.acquire(blocking=False):
+        return jsonify(error='A janela de escolha de pasta já está aberta.'), 409
+    try:
+        data = request.get_json(silent=True) or {}
+        with lock:
+            initial = image_folders.get(data.get('key'), image_default_folder)
+        result = subprocess.run([sys.executable, str(ROOT / 'choose_folder.py'), initial,
+                                 'Escolha a pasta para salvar a imagem'], capture_output=True, timeout=300,
+                                creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
+        if result.returncode:
+            raise OSError('Folder picker failed')
+        selected = json.loads(result.stdout.decode('utf-8'))
+        if not selected:
+            return jsonify(cancelled=True)
+        folder = Path(selected).resolve(strict=True)
+        if not folder.is_dir():
+            raise ValueError('Invalid folder')
+        return jsonify(**image_folder_choice(str(folder)), cancelled=False)
+    except subprocess.TimeoutExpired:
+        return jsonify(error='A escolha da pasta expirou. Tente novamente.'), 408
+    except (OSError, ValueError):
+        return jsonify(error='Não foi possível abrir ou selecionar a pasta.'), 400
+    finally:
+        picker_lock.release()
+
+
+@app.post('/api/images/default-folder')
+def set_image_default_folder():
+    global image_default_folder
+    data = request.get_json(silent=True) or {}
+    try:
+        with lock:
+            folder = '' if data.get('clear') is True else image_folders.get(data.get('key'))
+            if folder is None or (folder and not Path(folder).is_dir()):
+                raise ValueError('Invalid folder')
+            IMAGE_SETTINGS.write_text(json.dumps({'folder': folder}, ensure_ascii=False), encoding='utf-8')
+            image_default_folder = folder
+        return jsonify(folder=folder)
+    except (OSError, ValueError):
+        return jsonify(error='Não foi possível guardar a pasta padrão. Escolha uma pasta disponível.'), 400
+
+
+@app.post('/api/images/save')
+def save_image():
+    with lock:
+        folder = image_folders.get(request.args.get('key'))
+    if not folder or not Path(folder).is_dir():
+        return jsonify(error='A pasta não está disponível. Escolha outra pasta.'), 400
+    image = request.get_data()
+    extension = {'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp'}.get(request.mimetype)
+    valid = ((extension == 'png' and image.startswith(b'\x89PNG\r\n\x1a\n')) or
+             (extension == 'jpg' and image.startswith(b'\xff\xd8\xff')) or
+             (extension == 'webp' and image.startswith(b'RIFF') and image[8:12] == b'WEBP'))
+    if not valid:
+        return jsonify(error='O arquivo deve ser uma imagem PNG, JPG ou WebP.'), 400
+    name = re.sub(r'[<>:"/\\|?*\x00-\x1f]', '', request.args.get('name', 'imagem')).strip('. ')[:150] or 'imagem'
+    try:
+        saved = save_direct(io.BytesIO(image), folder, name + '.' + extension)
+        return jsonify(saved_to=str(saved), filename=saved.name)
+    except (OSError, ValueError):
+        return jsonify(error='Não foi possível salvar a imagem. Verifique o espaço e a permissão da pasta.'), 400
+
+
 @app.post('/api/shutdown')
 def shutdown():
     # Reserve both slots so new downloads cannot start during shutdown.
@@ -217,7 +335,7 @@ def shutdown():
     if not slots.acquire(blocking=False):
         slots.release()
         return jsonify(error='Aguarde os downloads terminarem antes de fechar o app.'), 409
-    timer = threading.Timer(1.5, lambda: os._exit(0))
+    timer = threading.Timer(0.3, app.config.get('SHUTDOWN_CALLBACK', lambda: os._exit(0)))
     timer.daemon = True
     timer.start()
     return jsonify(closing=True)
@@ -296,12 +414,13 @@ def info():
         url = video_url((request.get_json(silent=True) or {}).get('url', ''))
         with yt_dlp.YoutubeDL(options()) as ydl:
             data = ydl.extract_info(url, download=False)
-            sizes = size_previews(data, ydl)
+            qualities = video_qualities(data, ydl)
+            sizes = size_previews(data, ydl, qualities)
         if data.get('is_live'):
             return jsonify(error='Aguarde a transmissão ao vivo terminar para baixar.'), 400
         return jsonify(title=data.get('title'), thumbnail=data.get('thumbnail'),
                        duration=data.get('duration', 0), channel=data.get('uploader', 'YouTube'), url=url,
-                       sizes=sizes)
+                       sizes=sizes, qualities=qualities)
     except Exception as exc:
         return jsonify(error=readable_error(exc)), 400
 
@@ -312,8 +431,9 @@ def download():
     try:
         url = video_url(data.get('url', ''))
         fmt = data.get('format')
-        if fmt not in ('mp4', 'mp3-128', 'mp3-320'):
-            raise ValueError('Escolha MP4 ou MP3 em 128 ou 320 kbps.')
+        if fmt not in ('mp4', 'mp3-128', 'mp3-320') and not (
+                isinstance(fmt, str) and re.fullmatch(r'mp4-[1-9][0-9]{1,4}', fmt)):
+            raise ValueError('Escolha uma qualidade MP4 ou MP3 em 128 ou 320 kbps.')
         with lock:
             output_folder = destination if data.get('direct') is True else ''
         if data.get('direct') is True and (not output_folder or not Path(output_folder).is_dir()):
@@ -348,4 +468,5 @@ def file(job_id):
 
 
 if __name__ == '__main__':
-    app.run(host='127.0.0.1', port=8765, threaded=True, debug=False)
+    from desktop import run_desktop
+    run_desktop(app)

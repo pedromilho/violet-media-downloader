@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="app-token" content="{{ token }}">
+  <title>Editor de imagens · Violet</title>
+  <link rel="stylesheet" href="/static/style.css"><link rel="stylesheet" href="/static/refinement.css"><link rel="stylesheet" href="/static/images.css">
+  <script src="/static/images.js" defer></script>
+</head>
+<body class="image-editor">
+  {% include '_header.html' %}
+  <main class="image-main">
+    <h1 class="compact-title">Editor de imagens</h1>
+    <p class="editor-intro">Recorte, ajuste e converta suas imagens.</p>
+    <div class="editor-toolbar">
+      <label class="open-image primary" for="image-file">Abrir imagem</label>
+      <input id="image-file" type="file" accept="image/*" class="file-input">
+      <span id="image-name">Nenhuma imagem selecionada</span>
+      <button id="undo" type="button" disabled>Desfazer</button>
+      <button id="restore" type="button" disabled>Restaurar original</button>
+    </div>
+    <p id="image-error" class="error" role="alert" hidden></p>
+    <div class="image-workspace">
+      <section class="image-preview" aria-label="Prévia da imagem">
+        <div class="preview-heading"><span>Prévia</span><span id="image-dimensions"></span></div>
+        <div id="drop-zone" class="preview-stage">
+          <div id="image-empty"><svg viewBox="0 0 48 48" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="5" y="7" width="38" height="34" rx="4"/><circle cx="17" cy="18" r="4"/><path d="m6 35 11-10 9 8 7-8 10 10"/></svg><h2>Abra uma imagem para começar</h2><p>Ou arraste um arquivo para cá.</p></div>
+          <div id="canvas-wrap" hidden><canvas id="image-canvas" aria-label="Imagem em edição"></canvas><div id="crop-overlay" hidden></div></div>
+        </div>
+        <p id="image-status" role="status">Suas imagens ficam neste computador.</p>
+      </section>
+      <aside class="image-controls" aria-label="Ferramentas de edição">
+        <fieldset id="image-tools" disabled>
+          <section class="tool-section">
+            <h2>Recortar</h2><p class="tool-help">Arraste na prévia ou informe a área em pixels.</p>
+            <div class="dimension-grid">
+              <label for="crop-x">X<input id="crop-x" type="number" min="0" step="1" value="0"></label>
+              <label for="crop-y">Y<input id="crop-y" type="number" min="0" step="1" value="0"></label>
+              <label for="crop-width">Largura<input id="crop-width" type="number" min="1" step="1" value="1"></label>
+              <label for="crop-height">Altura<input id="crop-height" type="number" min="1" step="1" value="1"></label>
+            </div>
+            <button id="apply-crop" type="button" class="tool-apply">Aplicar recorte</button>
+          </section>
+          <section class="tool-section">
+            <h2>Inverter e girar</h2>
+            <div class="transform-grid">
+              <button id="flip-horizontal" type="button">Inverter horizontal</button>
+              <button id="flip-vertical" type="button">Inverter vertical</button>
+              <button id="rotate-left" type="button">Girar 90° à esquerda</button>
+              <button id="rotate-right" type="button">Girar 90° à direita</button>
+            </div>
+          </section>
+          <section class="tool-section">
+            <h2>Redimensionar</h2>
+            <div class="dimension-grid">
+              <label for="resize-width">Largura (px)<input id="resize-width" type="number" min="1" max="16384" step="1" value="1"></label>
+              <label for="resize-height">Altura (px)<input id="resize-height" type="number" min="1" max="16384" step="1" value="1"></label>
+            </div>
+            <label class="aspect-toggle"><input id="keep-aspect" type="checkbox" checked> Manter proporção</label>
+            <button id="apply-resize" type="button" class="tool-apply">Aplicar tamanho</button>
+          </section>
+          <section class="tool-section export-section">
+            <h2>Converter e salvar</h2>
+            <label class="field-label" for="export-format">FORMATO DE SAÍDA</label>
+            <select id="export-format"><option value="image/png">PNG</option><option value="image/jpeg">JPG</option><option value="image/webp">WebP</option></select>
+            <div id="export-quality-row" hidden><label for="export-quality">Qualidade <output id="export-quality-value" for="export-quality">90%</output></label><input id="export-quality" type="range" min="1" max="100" value="90"></div>
+            <p id="jpeg-note" class="tool-help" hidden>Áreas transparentes serão salvas com fundo branco.</p>
+            <button id="save-image" class="primary" type="button">Salvar imagem</button>
+            <div class="image-destination">
+              <p id="image-folder-path">Escolha a pasta ao salvar a imagem.</p>
+              <button id="default-image-folder" type="button" aria-pressed="false">Utilizar como pasta padrão</button>
+              <button id="change-image-folder" type="button" hidden>Alterar pasta padrão</button>
+            </div>
+            <p class="privacy">Conversão feita localmente.</p>
+          </section>
+        </fieldset>
+      </aside>
+    </div>
+  </main>
+  <footer><span>violet</span><span>PNG · JPG · WebP</span></footer>
+</body>
+</html>
